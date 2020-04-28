@@ -82,6 +82,8 @@ public:
   /// Type tag for this implementation.
   static const enum impl_type implementation = int128_impl;
 
+
+
   /// Default constructor.
   inline int64x64_t ()
     : _v (0)  {}

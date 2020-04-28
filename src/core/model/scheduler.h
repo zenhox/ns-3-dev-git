@@ -80,6 +80,7 @@ public:
   {
     uint64_t m_ts;         /**< Event time stamp. */
     uint32_t m_uid;        /**< Event unique id. */
+    uint32_t m_sub_uid;    /**< Event sub unique id */
     uint32_t m_context;    /**< Event context. */
   };
   /**
@@ -162,6 +163,11 @@ inline bool operator < (const Scheduler::EventKey &a,
     {
       return true;
     }
+  else if (a.m_uid == b.m_uid
+           && a.m_sub_uid < b.m_sub_uid)
+    {
+      return true;
+    }
   else
     {
       return false;
@@ -179,7 +185,7 @@ inline bool operator < (const Scheduler::EventKey &a,
 inline bool operator != (const Scheduler::EventKey &a,
                          const Scheduler::EventKey &b)
 {
-  return a.m_uid != b.m_uid;
+  return a.m_uid != b.m_uid || a.m_sub_uid != b.m_sub_uid;
 }
 
 /**
@@ -198,6 +204,11 @@ inline bool operator > (const Scheduler::EventKey &a,
     }
   else if (a.m_ts == b.m_ts
            && a.m_uid > b.m_uid)
+    {
+      return true;
+    }
+  else if (a.m_uid == b.m_uid
+          && a.m_sub_uid > b.m_sub_uid)
     {
       return true;
     }

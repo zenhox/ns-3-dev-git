@@ -9,7 +9,15 @@
 
 #include "ns3/simulator-impl.h"
 #include "ns3/scheduler.h"
-#include "ns3/ptr.h"
+#include "ns3/simulator.h"
+#include "ns3/system-thread.h"
+#include "sl_map.h"
+#include "ThreadPool.h"
+#include "lockfree-skiplist-scheduler.h"
+#include <list>
+
+#include <atomic>
+#include <vector>
 
 namespace ns3 {
 
@@ -45,6 +53,8 @@ public:
   virtual bool IsExpired (const EventId &id) const;
   virtual void Run (void);
   virtual Time Now (void) const;
+  virtual uint64_t NowTimestamp (void) const;
+  virtual uint32_t NowUid()const;
   virtual Time GetDelayLeft (const EventId &id) const;
   virtual Time GetMaximumSimulationTime (void) const;
   virtual void SetMaximumLookAhead (const Time lookAhead);
@@ -52,10 +62,31 @@ public:
   virtual uint32_t GetSystemId (void) const;
   virtual uint32_t GetContext (void) const;
   virtual uint64_t GetEventCount (void) const;
-
+  static void runOneNode(uint32_t context, shared_ptr<sl_map_gc<Scheduler::EventKey, EventImpl*>> evList);
+  static void gc();
+  
 private:
+
+  /** Next event unique id. */
+  std::atomic<uint32_t> m_uid;  
+  /** The event count. */
+  std::atomic<uint64_t> m_eventCount;
+  uint32_t m_destroyCtx;
+
+  /** 记录每个线程执行时的Context*/
+	static sl_map_gc<SystemThread::ThreadId, uint32_t> m_currentCtx;
+  /** 记录每个Context 的时间戳 */
+	static sl_map_gc<uint32_t, uint64_t> m_currentTs;
+  static sl_map_gc<uint32_t, uint32_t> m_currentUid;
+  static LockFreeScheduler m_events;
+  static std::list<EventId> m_destroy;
+
+  // status
+  bool m_stop;  //标记是否开始
+  bool m_start; // 标记是否结束
 
 };
 
 }
 
+#endif

@@ -252,7 +252,7 @@ def options(opt):
                    dest='enable_desmetrics')
     opt.add_option('--cxx-standard',
                    help=('Compile NS-3 with the given C++ standard'),
-                   type='string', default='-std=c++11', dest='cxx_standard')
+                   type='string', default='-std=c++17', dest='cxx_standard')
 
     # options provided in subdirectories
     opt.recurse('src')
@@ -463,12 +463,18 @@ def configure(conf):
                                              "Link flag -Wl,--whole-archive,-Bstatic does not work")
 
     # Enables C++-11 support by default, unless user specified another option
-    # Warn the user if the CXX Standard flag provided was not recognized  
+    # Warn the user if the CXX Standard flag provided was not recognized 
+    
     if conf.check_compilation_flag(Options.options.cxx_standard):
-        env.append_value('CXXFLAGS', Options.options.cxx_standard)
+        #env.append_value('CXXFLAGS', Options.options.cxx_standard)
+        #env.append_value('CXXFLAGS', "-std=c++17")
+        pass
     else:
         Logs.warn("CXX Standard flag " + Options.options.cxx_standard + " was not recognized, using compiler's default")
 
+    env.append_value('CXXFLAGS', "-std=c++17")
+    env.append_value('CXXFLAGS', "-Wall")
+    
     # Find Boost libraries by modules
     conf.env['REQUIRED_BOOST_LIBS'] = []
     for modules_dir in ['src', 'contrib']:
