@@ -43,11 +43,11 @@ main (int argc, char *argv[])
   cmd.Parse (argc, argv);
   
   Time::SetResolution (Time::NS);
-  LogComponentEnable ("UdpEchoClientApplication", LOG_LEVEL_INFO);
-  LogComponentEnable ("UdpEchoServerApplication", LOG_LEVEL_INFO);
+  // LogComponentEnable ("UdpEchoClientApplication", LOG_LEVEL_INFO);
+  // LogComponentEnable ("UdpEchoServerApplication", LOG_LEVEL_INFO);
 
-  // GlobalValue::Bind ("SimulatorImplementationType",
-  //                   StringValue ("ns3::HSPSimulatorImpl"));
+  GlobalValue::Bind ("SimulatorImplementationType",
+                    StringValue ("ns3::HSPSimulatorImpl"));
 
   NodeContainer nodes;
   nodes.Create (2);
@@ -71,16 +71,16 @@ main (int argc, char *argv[])
 
   ApplicationContainer serverApps = echoServer.Install (nodes.Get (1));
   serverApps.Start (Seconds (1.0));
-  serverApps.Stop (Seconds (10.0));
+  serverApps.Stop (Seconds (10000.0));
 
   UdpEchoClientHelper echoClient (interfaces.GetAddress (1), 9);
-  echoClient.SetAttribute ("MaxPackets", UintegerValue (1));
-  echoClient.SetAttribute ("Interval", TimeValue (Seconds (1.0)));
+  echoClient.SetAttribute ("MaxPackets", UintegerValue (10000));
+  echoClient.SetAttribute ("Interval", TimeValue (MilliSeconds (100.0)));
   echoClient.SetAttribute ("PacketSize", UintegerValue (1024));
 
   ApplicationContainer clientApps = echoClient.Install (nodes.Get (0));
   clientApps.Start (Seconds (2.0));
-  clientApps.Stop (Seconds (10.0));
+  clientApps.Stop (Seconds (10000.0));
 
   Simulator::Run ();
   cout << "Event count = " << Simulator::GetEventCount() << endl;

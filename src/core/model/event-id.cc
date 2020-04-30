@@ -41,11 +41,12 @@ EventId::EventId ()
   NS_LOG_FUNCTION (this);
 }
 
-EventId::EventId (const Ptr<EventImpl> &impl, uint64_t ts, uint32_t context, uint32_t uid)
+EventId::EventId (const Ptr<EventImpl> &impl, uint64_t ts, uint32_t context, uint32_t uid, uint32_t sub_uid)
   : m_eventImpl (impl),
     m_ts (ts),
     m_context (context),
-    m_uid (uid)
+    m_uid (uid),
+    m_sub_uid(sub_uid)
 {
   NS_LOG_FUNCTION (this << impl << ts << context << uid);
 }

@@ -55,8 +55,8 @@ main (int argc, char *argv[])
 
   cmd.Parse (argc,argv);
 
-  GlobalValue::Bind ("SimulatorImplementationType",
-                    StringValue ("ns3::HSPSimulatorImpl"));
+  // GlobalValue::Bind ("SimulatorImplementationType",
+  //                   StringValue ("ns3::HSPSimulatorImpl"));
 
   // The underlying restriction of 18 is due to the grid position
   // allocator's configuration; the grid layout will exceed the

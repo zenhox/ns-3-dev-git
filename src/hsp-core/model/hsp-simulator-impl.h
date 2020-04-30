@@ -57,7 +57,6 @@ public:
   virtual uint32_t NowUid()const;
   virtual Time GetDelayLeft (const EventId &id) const;
   virtual Time GetMaximumSimulationTime (void) const;
-  virtual void SetMaximumLookAhead (const Time lookAhead);
   virtual void SetScheduler (ObjectFactory schedulerFactory);
   virtual uint32_t GetSystemId (void) const;
   virtual uint32_t GetContext (void) const;
@@ -69,6 +68,7 @@ private:
 
   /** Next event unique id. */
   std::atomic<uint32_t> m_uid;  
+  std::atomic<uint32_t> m_sub_uid;  
   /** The event count. */
   std::atomic<uint64_t> m_eventCount;
   uint32_t m_destroyCtx;

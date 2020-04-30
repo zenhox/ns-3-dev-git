@@ -62,7 +62,7 @@ public:
    * \param [in] context The execution context for this event.
    * \param [in] uid The unique id for this EventId.
    */
-  EventId (const Ptr<EventImpl> &impl, uint64_t ts, uint32_t context, uint32_t uid);
+  EventId (const Ptr<EventImpl> &impl, uint64_t ts, uint32_t context, uint32_t uid, uint32_t sub_uid=0);
   /**
    * This method is syntactic sugar for the ns3::Simulator::Cancel
    * method.
@@ -124,6 +124,7 @@ private:
   uint64_t m_ts;               /**< The virtual time stamp. */
   uint32_t m_context;          /**< The context. */
   uint32_t m_uid;              /**< The unique id. */
+  uint32_t m_sub_uid;              /**< The unique id. */
 };
 
 /*************************************************
@@ -138,7 +139,8 @@ operator == (const EventId &a, const EventId &b)
     a.m_uid == b.m_uid && 
     a.m_context == b.m_context && 
     a.m_ts == b.m_ts && 
-    a.m_eventImpl == b.m_eventImpl;
+    a.m_eventImpl == b.m_eventImpl &&
+    a.m_sub_uid == b.m_sub_uid;
 }
   
 inline  
@@ -152,7 +154,13 @@ inline
 bool
 operator <  (const EventId &a, const EventId &b)
 {
-  return (a.GetTs () < b.GetTs ());
+  if(a.GetTs () != b.GetTs ())
+    return (a.GetTs () < b.GetTs ());
+  else if(a.m_uid != b.m_uid)
+    return a.m_uid < b.m_uid;
+  else if(a.m_sub_uid != b.m_sub_uid)
+    return a.m_sub_uid < b.m_sub_uid;
+  return false;
 }
 
 } // namespace ns3

@@ -73,6 +73,8 @@ HSPSimulatorImpl::HSPSimulatorImpl(){
   m_stop = false;
   m_start = false;
   m_eventCount.store(0);
+  m_uid.store(4);
+  m_sub_uid.store(1);
 }
 
 HSPSimulatorImpl::~HSPSimulatorImpl(){
@@ -98,13 +100,10 @@ bool HSPSimulatorImpl::IsFinished (void) const{
   return m_stop;
 }
 
-void HSPSimulatorImpl::SetMaximumLookAhead (const Time lookAhead){
-  NS_LOG_FUNCTION (this);
-  return;
-}
 
 void HSPSimulatorImpl::Stop (void){
   NS_LOG_FUNCTION (this);
+  cout <<"调用了Stop" << endl;
   m_stop = true;
 }
 
@@ -143,7 +142,8 @@ HSPSimulatorImpl::Schedule (Time const &delay, EventImpl *event)
   if(m_start &&  delay.GetTimeStep() == 0) //当前时间片立即插入
   {
     ev.key.m_uid = NowUid();
-    ev.key.m_sub_uid = 1;
+    ev.key.m_sub_uid = m_sub_uid.load();
+    m_sub_uid++;
   }
   else{
     ev.key.m_uid = m_uid;
@@ -152,7 +152,7 @@ HSPSimulatorImpl::Schedule (Time const &delay, EventImpl *event)
   }
   m_events.Insert (ev);
   m_eventCount++;
-  return EventId (event, ev.key.m_ts, ev.key.m_context, ev.key.m_uid);
+  return EventId (event, ev.key.m_ts, ev.key.m_context, ev.key.m_uid, ev.key.m_sub_uid);
 }
 
 void 
@@ -190,12 +190,17 @@ HSPSimulatorImpl::ScheduleWithContext (uint32_t context, const Time &delay, Even
 }
 
  EventId HSPSimulatorImpl::ScheduleNow (EventImpl *event){
-  NS_LOG_FUNCTION (this);
-  // TODO: 本质上应该是当前context下最前端新增一个，所以问题应该不大
-  NS_LOG_INFO ("[TODO] 调用了 ScheduleNow");
-  m_eventCount++;
-  m_uid++;
-  return EventId (event, 0, 0, 0);
+  Scheduler::Event ev;
+  ev.impl = event;
+  ev.key.m_ts = NowTimestamp();
+  ev.key.m_context = GetContext ();
+  ev.key.m_uid = NowUid();
+  ev.key.m_sub_uid = m_sub_uid.load();
+  m_events.Insert (ev);
+  m_sub_uid++;
+  return EventId (event, ev.key.m_ts, ev.key.m_context, ev.key.m_uid, ev.key.m_sub_uid);
+  // return Schedule(TimeStep(0), event);
+  // return EventId(event, 0,0,0,0);
 }
  EventId HSPSimulatorImpl::ScheduleDestroy (EventImpl *event){
   EventId id (Ptr<EventImpl> (event, false), NowTimestamp(), 0xffffffff, 2);
@@ -205,18 +210,42 @@ HSPSimulatorImpl::ScheduleWithContext (uint32_t context, const Time &delay, Even
   return id;
 }
 
- void HSPSimulatorImpl::Remove (const EventId &id){
-   NS_LOG_FUNCTION (this);
-   // 暂时不支持
-   NS_LOG_INFO ("[TODO] 调用了 Remove");
-   return;
+void HSPSimulatorImpl::Remove (const EventId &id){
+  NS_LOG_FUNCTION (this);
+  if (id.GetUid () == 2)
+    {
+      // destroy events.
+      for (std::list<EventId>::iterator i = m_destroy.begin (); i != m_destroy.end (); i++)
+        {
+          if (*i == id)
+            {
+              m_destroy.erase (i);
+              break;
+            }
+        }
+      return;
+    }
+  if (IsExpired (id))
+    {
+      return;
+    }
+  Scheduler::Event event;
+  event.impl = id.PeekEventImpl ();
+  event.key.m_ts = id.GetTs ();
+  event.key.m_context = id.GetContext ();
+  event.key.m_uid = id.GetUid ();
+  m_events.Remove (event);
+  event.impl->Cancel ();
+  // whenever we remove an event from the event list, we have to unref it.
+  event.impl->Unref ();
  }
 /** \copydoc Simulator::Cancel */
  void HSPSimulatorImpl::Cancel (const EventId &id){
    NS_LOG_FUNCTION (this);
    if (!IsExpired (id))
    {
-     id.PeekEventImpl ()->Cancel ();
+      // cout <<"Cancel" << endl;
+      id.PeekEventImpl ()->Cancel ();
    }
   return;
 }
@@ -257,7 +286,7 @@ bool HSPSimulatorImpl::IsExpired (const EventId &id) const {
 /** \copydoc Simulator::Run */
  void HSPSimulatorImpl::Run (void) {
   NS_LOG_FUNCTION (this);
-  int threadNum = 2;
+  int threadNum = 1;
   shared_ptr<SliceEvents> sliceEvents; 
   std::vector< std::future<void> > results;
   results.reserve(100);
@@ -275,19 +304,26 @@ bool HSPSimulatorImpl::IsExpired (const EventId &id) const {
       nodeStatis[getIndexND(ndCnt)]++;
       evetStatis[getIndexEV(evCnt)]++;
       results.clear();
-      for(auto it = events.begin(); it != events.end(); ++it){
-          results.emplace_back(pool.enqueue(runOneNode, it->first, it->second));
-      }
-      for(size_t i=0; i<results.size(); ++i){
-          results[i].wait(); 
-      }
+      // if(count < 100){ // 把资源分配和其他相关的事件先处理完毕
+        for(auto it = events.begin(); it != events.end(); ++it){
+            runOneNode(it->first, it->second);
+        }
+      // }else{
+      //   // cout<< "开始走多核"<<endl;
+      //   for(auto it = events.begin(); it != events.end(); ++it){
+      //       results.emplace_back(pool.enqueue(runOneNode, it->first, it->second));
+      //   }
+      //   for(size_t i=0; i<results.size(); ++i){
+      //       results[i].wait(); 
+      //   }
+      // }
       if(count % 100000 == 0){
           pool.enqueue(gc);
       }
   }
   m_stop = true;
-  // cout << "Insert :" << m_eventCount.load()<<endl;
-  // cout << "Execun :" << m_events.getEventCount() <<endl;
+  cout << "Insert :" << m_eventCount.load()<<endl;
+  cout << "Execun :" << m_events.getEventCount() <<endl;
   // //输出统计结果
   // for(auto i=0; i<4; ++i){
   //     cout << nodeStatis[i] << "    ";
@@ -364,7 +400,7 @@ uint32_t HSPSimulatorImpl::NowUid()const{
   * before we start to use it.
   */
  void HSPSimulatorImpl::SetScheduler (ObjectFactory schedulerFactory) {
-   cout << "调用了 SetScheduler" << endl;
+  //  cout << "调用了 SetScheduler" << endl;
   //暂不支持动态更换Scheduler
 }
 

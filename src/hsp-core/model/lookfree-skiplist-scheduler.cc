@@ -62,6 +62,16 @@ int LockFreeScheduler::Insert (const Scheduler::Event &ev){
     return 0;
 }
 
+void LockFreeScheduler::Remove (const Scheduler::Event &ev){
+    Time evTime = Time(ev.key.m_ts);  //猜测
+    int64x64_t slice_id = calcSlice(evTime);
+    auto itr = _eventTree.find(slice_id);
+    if(itr.isNull())
+        return;
+    (itr->second)->RemoveEvent(ev);
+    return;
+}
+
  bool LockFreeScheduler::IsEmpty (void){
 
     auto itr = _eventTree.find(_curSliceId);
@@ -71,7 +81,6 @@ int LockFreeScheduler::Insert (const Scheduler::Event &ev){
 
 int LockFreeScheduler::PeekNextSlice (shared_ptr<SliceEvents> &sliceEvents){
 
-    
     static bool isBegin = true;
     auto itr = _eventTree.find(_curSliceId);
     if(_curSliceId == 0)

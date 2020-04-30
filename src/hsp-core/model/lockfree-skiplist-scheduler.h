@@ -35,19 +35,8 @@ namespace ns3 {
       SliceEvents(int64x64_t id);
       ~SliceEvents();
 
-      // struct EventKey
-      // {
-      //   uint64_t m_ts;         /**< Event time stamp. */
-      //   uint32_t m_uid;        /**< Event unique id. */
-      //   uint32_t m_context;    /**< Event context. */
-      // };
-      // struct Event
-      // {
-      //   EventImpl *impl;       /**< Pointer to the event implementation. */
-      //   EventKey key;          /**< Key for sorting and ordering Events. */
-      // };
-
       inline int insertEvent(const Scheduler::Event &ev);
+      inline void RemoveEvent (const Scheduler::Event &ev);
 
       uint64_t getEventCount()const;
       int64x64_t getSliceId()const;
@@ -60,7 +49,6 @@ namespace ns3 {
   } ;
 
 inline int SliceEvents::insertEvent(const Scheduler::Event &ev){
-
     uint32_t nodeId = ev.key.m_context;
     auto nevents = std::make_shared<sl_map_gc<Scheduler::EventKey, EventImpl*>>();
 
@@ -73,6 +61,15 @@ inline int SliceEvents::insertEvent(const Scheduler::Event &ev){
       cout <<"插入失败"<<endl;
     _eventCnt++;
     return 0;
+}
+
+inline void SliceEvents::RemoveEvent (const Scheduler::Event &ev){
+    uint32_t nodeId = ev.key.m_context;
+    auto itr = _sliceEvs.find(nodeId);
+    if(itr.isNull())
+      return;
+    (itr->second)->erase(ev.key);
+    return;
 }
 
 /**
@@ -92,6 +89,7 @@ public:
 
   // Inherited
   int Insert (const Scheduler::Event &ev);
+  void Remove (const Scheduler::Event &ev);
   bool IsEmpty (void);
   int PeekNextSlice (shared_ptr<SliceEvents> &sliceEvents);
   uint64_t getEventCount()const {return _eventCnt.load();}
