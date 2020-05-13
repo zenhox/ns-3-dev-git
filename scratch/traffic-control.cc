@@ -87,8 +87,8 @@ SojournTimeTrace (Time sojournTime)
 int
 main (int argc, char *argv[])
 {
-    // GlobalValue::Bind ("SimulatorImplementationType",
-    //                 StringValue ("ns3::HSPSimulatorImpl"));
+    GlobalValue::Bind ("SimulatorImplementationType",
+                    StringValue ("ns3::HSPSimulatorImpl"));
   double simulationTime = 10; //seconds
   std::string transportProt = "Tcp";
   std::string socketType;

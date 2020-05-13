@@ -12,12 +12,12 @@
 #include "ns3/simulator.h"
 #include "ns3/system-thread.h"
 #include "sl_map.h"
-#include "ThreadPool.h"
 #include "lockfree-skiplist-scheduler.h"
 #include <list>
 
 #include <atomic>
 #include <vector>
+#include "mpi-helper.h"
 
 namespace ns3 {
 
@@ -61,31 +61,103 @@ public:
   virtual uint32_t GetSystemId (void) const;
   virtual uint32_t GetContext (void) const;
   virtual uint64_t GetEventCount (void) const;
-  static void runOneNode(uint32_t context, shared_ptr<sl_map_gc<Scheduler::EventKey, EventImpl*>> evList);
-  static void gc();
-  
 private:
+  
+  inline LockFreeScheduler* GetScheduler(uint32_t context);
+  inline void WriteState(int state);
+  inline double ReadGlbCurrSlice();
+  inline void WriteGlbNextSlice(double slice);
+  inline void WaitAllDone(); /*for rank 0: read all status*/
+  inline void GenEvent(uint32_t context, Time const &delay, EventImpl *event, Scheduler::Event &ev);
 
-  /** Next event unique id. */
-  std::atomic<uint32_t> m_uid;  
-  std::atomic<uint32_t> m_sub_uid;  
-  /** The event count. */
-  std::atomic<uint64_t> m_eventCount;
-  uint32_t m_destroyCtx;
-
-  /** 记录每个线程执行时的Context*/
-	static sl_map_gc<SystemThread::ThreadId, uint32_t> m_currentCtx;
-  /** 记录每个Context 的时间戳 */
-	static sl_map_gc<uint32_t, uint64_t> m_currentTs;
-  static sl_map_gc<uint32_t, uint32_t> m_currentUid;
-  static LockFreeScheduler m_events;
-  static std::list<EventId> m_destroy;
-
-  // status
+  int m_systemId; 
+  int m_systemNm;
+  /*LP info*/
+	uint64_t m_currentTs;
+  uint32_t m_currentUid;
+  double m_curSliceId;
   bool m_stop;  //标记是否开始
   bool m_start; // 标记是否结束
+  
+  
+  std::list<EventId> m_destroy; /*for rank 0*/
 
+  void * m_basePtr;
 };
+
+
+inline LockFreeScheduler* HSPSimulatorImpl::GetScheduler(uint32_t context){
+  if(m_basePtr == nullptr)
+    return nullptr;
+  MPI_GLB_DATA*  g_data_ptr = (MPI_GLB_DATA*)m_basePtr;
+  return (g_data_ptr->schedulers)[context];
+}
+
+inline void HSPSimulatorImpl::WriteState(int state){
+  if(m_basePtr == nullptr)
+    return ;
+  MPI_GLB_DATA* g_data_ptr = (MPI_GLB_DATA*)m_basePtr;
+  ((g_data_ptr->g_status)[m_systemId])->store(state);
+}
+
+inline double HSPSimulatorImpl::ReadGlbCurrSlice(){
+  if(m_basePtr == nullptr)
+    return -1;
+  MPI_GLB_DATA* g_data_ptr = (MPI_GLB_DATA*)m_basePtr;
+  return (g_data_ptr->g_currTimeSlice)->load();  
+}
+
+inline void HSPSimulatorImpl::WriteGlbNextSlice(double slice){
+  if(m_basePtr == nullptr)
+    return;
+  MPI_GLB_DATA* g_data_ptr = (MPI_GLB_DATA*)m_basePtr;
+  (g_data_ptr->g_nextTimeSlice)->store(slice); 
+  return;
+}
+
+/*for rank 0: read all status*/
+inline void HSPSimulatorImpl::WaitAllDone() 
+{
+  if(m_basePtr == nullptr)
+    return;
+  MPI_GLB_DATA* g_data_ptr = (MPI_GLB_DATA*)m_basePtr;
+  for(int i=0; i < MPI_Helper::getSystemNum(); ++i){
+    int state = ((g_data_ptr->g_status)[i])->load();
+    while(state == 0){
+      state = ((g_data_ptr->g_status)[i])->load();
+    }
+  }
+}
+
+inline void HSPSimulatorImpl::GenEvent(uint32_t context, Time const &delay, EventImpl *event, Scheduler::Event &ev){
+  // NS_LOG_INFO ("调用了 ScheduleWithContext context="<<context<<", delay="<< delay.GetTimeStep());
+  if(m_basePtr == nullptr)
+    return ;
+  MPI_GLB_DATA* g_data_ptr = (MPI_GLB_DATA*)m_basePtr;
+  if(delay.GetTimeStep() != 0 && delay.GetTimeStep()  < (g_data_ptr->minDelay)->load())
+    g_data_ptr->minDelay->store(delay.GetTimeStep());
+  uint64_t currentTs = m_currentTs;
+  Time tAbsolute = delay + TimeStep (currentTs);
+
+  Scheduler::Event new_ev;
+  new_ev.impl = event;
+  new_ev.key.m_ts = static_cast<uint64_t> (tAbsolute.GetTimeStep ());
+  new_ev.key.m_context = context;
+  if(m_start && delay.GetTimeStep() == 0) //当前时间片立即插入
+  {
+    new_ev.key.m_uid = m_currentUid;
+    new_ev.key.m_sub_uid = (g_data_ptr->sub_uid)->load();
+    (*(g_data_ptr->sub_uid))++;
+  }
+  else{
+    new_ev.key.m_uid = (g_data_ptr->uid)->load();
+    new_ev.key.m_sub_uid = 0;
+    (*(g_data_ptr->uid))++;
+  }
+  (*(g_data_ptr->eventCount))++;
+  ev = new_ev;
+  return;
+}
 
 }
 

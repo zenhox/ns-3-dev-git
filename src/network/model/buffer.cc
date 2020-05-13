@@ -23,7 +23,7 @@
 
 #define LOG_INTERNAL_STATE(y)                                                                    \
   NS_LOG_LOGIC (y << "start="<<m_start<<", end="<<m_end<<", zero start="<<m_zeroAreaStart<<              \
-                ", zero end="<<m_zeroAreaEnd<<", count="<<m_data->m_count<<", size="<<m_data->m_size<<   \
+                ", zero end="<<m_zeroAreaEnd<<", count="<<(m_data->m_count).load()<<", size="<<m_data->m_size<<   \
                 ", dirty start="<<m_data->m_dirtyStart<<", dirty end="<<m_data->m_dirtyEnd)
 
 namespace {
@@ -98,21 +98,21 @@ void
 Buffer::Recycle (struct Buffer::Data *data)
 {
   NS_LOG_FUNCTION (data);
-  NS_ASSERT (data->m_count == 0);
-  NS_ASSERT (!IS_UNINITIALIZED (g_freeList));
-  g_maxSize = std::max (g_maxSize, data->m_size);
-  /* feed into free list */
-  if (data->m_size < g_maxSize ||
-      IS_DESTROYED (g_freeList) ||
-      g_freeList->size () > 1000)
-    {
-      Buffer::Deallocate (data);
-    }
-  else
-    {
-      NS_ASSERT (IS_INITIALIZED (g_freeList));
-      g_freeList->push_back (data);
-    }
+  // NS_ASSERT ((data->m_count).load() == 0);
+  // NS_ASSERT (!IS_UNINITIALIZED (g_freeList));
+  // g_maxSize = std::max (g_maxSize, data->m_size);
+  // /* feed into free list */
+  // if (data->m_size < g_maxSize ||
+  //     IS_DESTROYED (g_freeList) ||
+  //     g_freeList->size () > 1000)
+  //   {
+  //     Buffer::Deallocate (data);
+  //   }
+  // else
+  //   {
+  //     NS_ASSERT (IS_INITIALIZED (g_freeList));
+  //     g_freeList->push_back (data);
+  //   }
 }
 
 Buffer::Data *
@@ -132,14 +132,14 @@ Buffer::Create (uint32_t dataSize)
           g_freeList->pop_back ();
           if (data->m_size >= dataSize) 
             {
-              data->m_count = 1;
+              (data->m_count).store(1);
               return data;
             }
           Buffer::Deallocate (data);
         }
     }
   struct Buffer::Data *data = Buffer::Allocate (dataSize);
-  NS_ASSERT (data->m_count == 1);
+  NS_ASSERT ((data->m_count).load() == 1);
   return data;
 }
 #else /* BUFFER_FREE_LIST */
@@ -147,7 +147,7 @@ void
 Buffer::Recycle (struct Buffer::Data *data)
 {
   NS_LOG_FUNCTION (data);
-  NS_ASSERT (data->m_count == 0);
+  NS_ASSERT ((m_data->m_count).load() == 0);
   Deallocate (data);
 }
 
@@ -172,7 +172,7 @@ Buffer::Allocate (uint32_t reqSize)
   uint8_t *b = new uint8_t [size];
   struct Buffer::Data *data = reinterpret_cast<struct Buffer::Data*>(b);
   data->m_size = reqSize;
-  data->m_count = 1;
+  (data->m_count).store(1);
   return data;
 }
 
@@ -180,7 +180,7 @@ void
 Buffer::Deallocate (struct Buffer::Data *data)
 {
   NS_LOG_FUNCTION (data);
-  NS_ASSERT (data->m_count == 0);
+  NS_ASSERT ((data->m_count).load() == 0);
   uint8_t *buf = reinterpret_cast<uint8_t *> (data);
   delete [] buf;
 }
@@ -226,7 +226,7 @@ Buffer::CheckInternalState (void) const
     m_start <= m_data->m_size &&
     m_zeroAreaStart <= m_data->m_size;
 
-  bool ok = m_data->m_count > 0 && offsetsOk && dirtyOk && internalSizeOk;
+  bool ok = (m_data->m_count).load() > 0 && offsetsOk && dirtyOk && internalSizeOk;
   if (!ok)
     {
       LOG_INTERNAL_STATE ("check " << this << 
@@ -263,7 +263,7 @@ Buffer::operator = (Buffer const&o)
     {
       // not assignment to self.
       m_data->m_count--;
-      if (m_data->m_count == 0) 
+      if ((m_data->m_count).load() == 0) 
         {
           Recycle (m_data);
         }
@@ -286,7 +286,7 @@ Buffer::~Buffer ()
   NS_ASSERT (CheckInternalState ());
   g_recommendedStart = std::max (g_recommendedStart, m_maxZeroAreaStart);
   m_data->m_count--;
-  if (m_data->m_count == 0) 
+  if ((m_data->m_count).load() == 0) 
     {
       Recycle (m_data);
     }
@@ -310,7 +310,7 @@ Buffer::AddAtStart (uint32_t start)
 {
   NS_LOG_FUNCTION (this << start);
   NS_ASSERT (CheckInternalState ());
-  bool isDirty = m_data->m_count > 1 && m_start > m_data->m_dirtyStart;
+  bool isDirty = (m_data->m_count).load() > 1 && m_start > m_data->m_dirtyStart;
   if (m_start >= start && !isDirty)
     {
       /* enough space in the buffer and not dirty. 
@@ -318,7 +318,7 @@ Buffer::AddAtStart (uint32_t start)
        * Before: |*****---------***|
        * After:  |***..---------***|
        */
-      NS_ASSERT (m_data->m_count == 1 || m_start == m_data->m_dirtyStart);
+      NS_ASSERT ((m_data->m_count).load() == 1 || m_start == m_data->m_dirtyStart);
       m_start -= start;
       // update dirty area
       m_data->m_dirtyStart = m_start;
@@ -329,7 +329,7 @@ Buffer::AddAtStart (uint32_t start)
       struct Buffer::Data *newData = Buffer::Create (newSize);
       memcpy (newData->m_data + start, m_data->m_data + m_start, GetInternalSize ());
       m_data->m_count--;
-      if (m_data->m_count == 0)
+      if ((m_data->m_count).load() == 0)
         {
           Buffer::Recycle (m_data);
         }
@@ -355,7 +355,7 @@ Buffer::AddAtEnd (uint32_t end)
 {
   NS_LOG_FUNCTION (this << end);
   NS_ASSERT (CheckInternalState ());
-  bool isDirty = m_data->m_count > 1 && m_end < m_data->m_dirtyEnd;
+  bool isDirty = (m_data->m_count).load() > 1 && m_end < m_data->m_dirtyEnd;
   if (GetInternalEnd () + end <= m_data->m_size && !isDirty)
     {
       /* enough space in buffer and not dirty
@@ -363,7 +363,7 @@ Buffer::AddAtEnd (uint32_t end)
        * Before: |**----*****|
        * After:  |**----...**|
        */
-      NS_ASSERT (m_data->m_count == 1 || m_end == m_data->m_dirtyEnd);
+      NS_ASSERT ((m_data->m_count).load() == 1 || m_end == m_data->m_dirtyEnd);
       m_end += end;
       // update dirty area.
       m_data->m_dirtyEnd = m_end;
@@ -374,7 +374,7 @@ Buffer::AddAtEnd (uint32_t end)
       struct Buffer::Data *newData = Buffer::Create (newSize);
       memcpy (newData->m_data, m_data->m_data + m_start, GetInternalSize ());
       m_data->m_count--;
-      if (m_data->m_count == 0) 
+      if ((m_data->m_count).load() == 0) 
         {
           Buffer::Recycle (m_data);
         }
@@ -400,7 +400,7 @@ void
 Buffer::AddAtEnd (const Buffer &o)
 {
   NS_LOG_FUNCTION (this << &o);
-  if (m_data->m_count == 1 &&
+  if ((m_data->m_count).load() == 1 &&
       m_end == m_zeroAreaEnd &&
       m_end == m_data->m_dirtyEnd &&
       o.m_start == o.m_zeroAreaStart &&

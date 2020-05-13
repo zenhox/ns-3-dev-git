@@ -25,6 +25,8 @@
 #include <ostream>
 #include "ns3/assert.h"
 
+#include <atomic>
+
 #define BUFFER_FREE_LIST 1
 
 namespace ns3 {
@@ -663,7 +665,7 @@ private:
      * The reference count of an instance of this data structure.
      * Each buffer which references an instance holds a count.
      */
-    uint32_t m_count;
+    std::atomic<uint32_t> m_count;
     /**
      * the size of the m_data field below.
      */

@@ -20,6 +20,7 @@
 #include "ns3/point-to-point-module.h"
 #include "ns3/applications-module.h"
 #include <iostream>
+#include "ns3/mpi-helper.h"
 using namespace std;
 
 // Default Network Topology
@@ -46,11 +47,16 @@ main (int argc, char *argv[])
   // LogComponentEnable ("UdpEchoClientApplication", LOG_LEVEL_INFO);
   // LogComponentEnable ("UdpEchoServerApplication", LOG_LEVEL_INFO);
 
-  GlobalValue::Bind ("SimulatorImplementationType",
+  MPI_Helper::Enable();
+
+    GlobalValue::Bind ("SimulatorImplementationType",
                     StringValue ("ns3::HSPSimulatorImpl"));
 
-  NodeContainer nodes;
-  nodes.Create (2);
+
+  Ptr<Node> n1  = CreateObject<Node> ();
+  Ptr<Node> n2  = CreateObject<Node> ();
+  NodeContainer nodes (n1,n2);
+
 
   PointToPointHelper pointToPoint;
   pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("5Mbps"));
@@ -85,5 +91,8 @@ main (int argc, char *argv[])
   Simulator::Run ();
   cout << "Event count = " << Simulator::GetEventCount() << endl;
   Simulator::Destroy ();
+  
+  MPI_Helper::Disable();
+
   return 0;
 }
