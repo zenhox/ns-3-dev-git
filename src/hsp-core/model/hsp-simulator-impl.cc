@@ -72,6 +72,7 @@ HSPSimulatorImpl::GetTypeId (void)
 HSPSimulatorImpl::HSPSimulatorImpl(){
   m_stop = false;
   m_start = false;
+  m_initCount = 0;
   m_eventCount.store(0);
   m_uid.store(4);
   m_sub_uid.store(1);
@@ -163,6 +164,10 @@ HSPSimulatorImpl::ScheduleWithContext (uint32_t context, const Time &delay, Even
   //插入这个context的时间戳(sl map在已经存在时会忽略这条指令)
   m_currentTs.insert(std::make_pair(context, 0));  
   m_currentUid.insert(std::make_pair(context, 0));
+
+  if(!m_start){
+    m_initCount++;
+  }
 
   uint64_t currentTs = m_currentTs.find(GetContext())->second;
   Time tAbsolute = delay + TimeStep (currentTs);
@@ -286,40 +291,37 @@ bool HSPSimulatorImpl::IsExpired (const EventId &id) const {
 /** \copydoc Simulator::Run */
  void HSPSimulatorImpl::Run (void) {
   NS_LOG_FUNCTION (this);
-  int threadNum = 1;
+  int threadNum = 4;
   shared_ptr<SliceEvents> sliceEvents; 
   std::vector< std::future<void> > results;
   results.reserve(100);
   int nodeStatis[4]=  {0};    //1, 2~6, 7~10, 11~, 
   int evetStatis[4] = {0};    //0~10, 11 ~ 50, 51 ~ 100, 100~
-  int count = 0;
 
   ThreadPool pool(threadNum);
   m_start = true;
   while(!m_events.PeekNextSlice(sliceEvents) && !m_stop){
-      count ++ ;
       auto& events = sliceEvents->_sliceEvs;
       uint64_t evCnt = sliceEvents->getEventCount();
       size_t ndCnt = events.size();
       nodeStatis[getIndexND(ndCnt)]++;
       evetStatis[getIndexEV(evCnt)]++;
       results.clear();
-      // if(count < 100){ // 把资源分配和其他相关的事件先处理完毕
+      if(g_exeCnt.load() <= m_initCount){
         for(auto it = events.begin(); it != events.end(); ++it){
-            runOneNode(it->first, it->second);
+            runOneNode( it->first, it->second);
         }
-      // }else{
-      //   // cout<< "开始走多核"<<endl;
-      //   for(auto it = events.begin(); it != events.end(); ++it){
-      //       results.emplace_back(pool.enqueue(runOneNode, it->first, it->second));
-      //   }
-      //   for(size_t i=0; i<results.size(); ++i){
-      //       results[i].wait(); 
-      //   }
-      // }
-      if(count % 100000 == 0){
-          pool.enqueue(gc);
+      }else{
+        for(auto it = events.begin(); it != events.end(); ++it){
+            results.emplace_back(pool.enqueue(runOneNode, it->first, it->second));
+        }
+        for(size_t i=0; i<results.size(); ++i){
+            results[i].wait(); 
+        }
       }
+      // if(count % 100000 == 0){
+      //     pool.enqueue(gc);
+      // }
   }
   m_stop = true;
   cout << "Insert :" << m_eventCount.load()<<endl;

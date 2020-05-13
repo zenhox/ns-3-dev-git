@@ -71,6 +71,7 @@ private:
   std::atomic<uint32_t> m_sub_uid;  
   /** The event count. */
   std::atomic<uint64_t> m_eventCount;
+  uint32_t m_initCount;
   uint32_t m_destroyCtx;
 
   /** 记录每个线程执行时的Context*/

@@ -69,12 +69,12 @@ main (int argc, char *argv[])
 
   UdpEchoServerHelper echoServer (9);
 
-  ApplicationContainer serverApps = echoServer.Install (nodes.Get (1));
+  ApplicationContainer serverApps = echoServer.Install (nodes);
   serverApps.Start (Seconds (1.0));
   serverApps.Stop (Seconds (10000.0));
 
   UdpEchoClientHelper echoClient (interfaces.GetAddress (1), 9);
-  echoClient.SetAttribute ("MaxPackets", UintegerValue (10000));
+  echoClient.SetAttribute ("MaxPackets", UintegerValue (10));
   echoClient.SetAttribute ("Interval", TimeValue (MilliSeconds (100.0)));
   echoClient.SetAttribute ("PacketSize", UintegerValue (1024));
 
