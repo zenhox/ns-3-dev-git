@@ -27,6 +27,7 @@
 
 #include "null-message-mpi-interface.h"
 #include "granted-time-window-mpi-interface.h"
+#include "ns3/hsp_mpi_interface.h"
 
 namespace ns3 {
 
@@ -89,11 +90,16 @@ MpiInterface::Enable (int* pargc, char*** pargv)
           g_parallelCommunicationInterface = new NullMessageMpiInterface ();
           useDefault = false;
         }
-      else if (simulationType.compare ("ns3::DistributedSimulatorImpl") == 0)
+      else if (simulationType.compare ("ns3::HspSimualtorImpl") == 0)
         {
-          g_parallelCommunicationInterface = new GrantedTimeWindowMpiInterface ();
+          g_parallelCommunicationInterface = new HspMpiInterface ();
           useDefault = false;
         }
+      else if (simulationType.compare ("ns3::DistributedSimulatorImpl") == 0)
+      {
+        g_parallelCommunicationInterface = new GrantedTimeWindowMpiInterface ();
+        useDefault = false;
+      }
     }
 
   // User did not specify a valid parallel simulator; use the default.

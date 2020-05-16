@@ -21,6 +21,7 @@ using std::endl;
 #include <memory>
 using std::shared_ptr;
 
+
 /**
  * \file
  * \ingroup scheduler
@@ -29,48 +30,7 @@ using std::shared_ptr;
 
 namespace ns3 {
 
-  class SliceEvents{
-  public:
-      // @in id : slice id
-      SliceEvents(int64x64_t id);
-      ~SliceEvents();
-
-      inline int insertEvent(const Scheduler::Event &ev);
-      inline void RemoveEvent (const Scheduler::Event &ev);
-
-      uint64_t getEventCount()const;
-      int64x64_t getSliceId()const;
-
-      sl_map_gc<uint32_t, std::shared_ptr<sl_map_gc<Scheduler::EventKey, EventImpl*>>> _sliceEvs;
-      
-  private:
-      int64x64_t _sliceId;
-      std::atomic<uint64_t> _eventCnt;
-  } ;
-
-inline int SliceEvents::insertEvent(const Scheduler::Event &ev){
-    uint32_t nodeId = ev.key.m_context;
-    auto nevents = std::make_shared<sl_map_gc<Scheduler::EventKey, EventImpl*>>();
-
-    // 直接插入，已经有了会被忽略
-    _sliceEvs.insert(std::make_pair(nodeId, nevents));
-    auto itr = _sliceEvs.find(nodeId);
-
-    auto re = (itr->second)->insert(std::make_pair(ev.key, ev.impl));
-    if(re.second  ==  false)
-      cout <<"插入失败"<<endl;
-    _eventCnt++;
-    return 0;
-}
-
-inline void SliceEvents::RemoveEvent (const Scheduler::Event &ev){
-    uint32_t nodeId = ev.key.m_context;
-    auto itr = _sliceEvs.find(nodeId);
-    if(itr.isNull())
-      return;
-    (itr->second)->erase(ev.key);
-    return;
-}
+using EventsMap = sl_map_gc<Scheduler::EventKey, EventImpl*>;
 
 /**
  * \ingroup scheduler
@@ -87,28 +47,109 @@ public:
   /** Destructor. */
   virtual ~LockFreeScheduler ();
 
+  inline int PeekNext (shared_ptr<EventsMap>&);
+  
+  // 没有开始输入-1
+  inline double ReadNext(double currTs);  // 读取下一个时间片
+
   // Inherited
-  int Insert (const Scheduler::Event &ev);
-  void Remove (const Scheduler::Event &ev);
-  bool IsEmpty (void);
-  int PeekNextSlice (shared_ptr<SliceEvents> &sliceEvents);
+  inline int Insert (const Scheduler::Event &ev);
+  inline void Remove (const Scheduler::Event &ev);
+
+  inline bool IsEmpty (void);
+
   uint64_t getEventCount()const {return _eventCnt.load();}
+  double getCurrentSliceId()const{return _curSliceId;}
+  
   void gc();
 private:
-
-  Time _sliceSize;
-  std::atomic<uint64_t> _eventCnt;
-  int64x64_t _curSliceId;
-  sl_map_gc<int64x64_t, std::shared_ptr<SliceEvents>> _eventTree;
-
-  inline int64x64_t calcSlice(const Time& time)const;
+  Time                     _sliceSize;
+  std::atomic<uint64_t>    _eventCnt;
+  double                   _curSliceId;
+  sl_map_gc<double,  shared_ptr<EventsMap> > _events;
+  inline double calcSlice(const Time& time)const;
 };
 
-inline int64x64_t LockFreeScheduler::calcSlice(const Time& time)const
+inline double LockFreeScheduler::calcSlice(const Time& time)const
 {
-    return time / _sliceSize;
+    return (time / _sliceSize).GetDouble();
 }
 
+inline int LockFreeScheduler::PeekNext(shared_ptr<EventsMap> &events){
+    static bool isBegin = true;
+    auto itr = _events.find(_curSliceId);
+    if(_curSliceId == 0)
+    {      
+        if( isBegin && (itr->second)->size() != 0)
+        {
+            isBegin = false;
+            events = itr->second;
+
+            return 0;
+        }else if(isBegin && (itr->second)->size() == 0){
+            isBegin = false;
+            itr++;
+            if(itr.isNull())
+              return -1;
+            events = itr->second;
+            return 0;
+        }
+    }
+    itr++;
+    if(itr.isNull())
+    {
+      _curSliceId = 0;
+      return -1;
+    }
+    _curSliceId = itr->first;
+    events = itr->second;
+    return 0;
+}
+
+
+inline double LockFreeScheduler::ReadNext(double currTs){
+    if( currTs == -1){
+      // 还没有开始, 返回第一个
+      auto itr = _events.begin();
+      if( itr.isNull())
+        return -1;
+      return itr->first;
+    }
+    auto itr = _events.find(currTs);
+    itr++;
+    if(itr.isNull())
+    {
+        return -1;
+    }   
+    return itr->first;     
+}
+
+
+inline int LockFreeScheduler::Insert (const Scheduler::Event &ev){
+  Time evTime = Time(ev.key.m_ts);  
+  double slice_id = calcSlice(evTime);
+  shared_ptr<EventsMap> events = std::make_shared <EventsMap>();
+  auto re = _events.insert(std::make_pair(slice_id,events)); 
+  if(slice_id < _curSliceId)
+  {
+    return 0;
+  }  
+  auto itr = _events.find(slice_id);
+  (itr->second)->insert(std::make_pair(ev.key,ev.impl));
+  _eventCnt++;
+  return 0;
+}
+
+inline void LockFreeScheduler::Remove (const Scheduler::Event &ev)
+{
+  Time evTime = Time(ev.key.m_ts); 
+  double slice_id = calcSlice(evTime);
+  auto itr = _events.find(slice_id);
+  if(itr.isNull())
+      return;
+  (itr->second)->erase(ev.key);
+  return;
+}
 
 
 } // namespace ns3
