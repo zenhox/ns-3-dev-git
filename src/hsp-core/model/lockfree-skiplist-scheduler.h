@@ -60,6 +60,7 @@ public:
 
   uint64_t getEventCount()const {return _eventCnt.load();}
   double getCurrentSliceId()const{return _curSliceId;}
+  inline double calcSlice(const Time& time)const;
   
   void gc();
 private:
@@ -67,7 +68,6 @@ private:
   std::atomic<uint64_t>    _eventCnt;
   double                   _curSliceId;
   sl_map_gc<double,  shared_ptr<EventsMap> > _events;
-  inline double calcSlice(const Time& time)const;
 };
 
 inline double LockFreeScheduler::calcSlice(const Time& time)const

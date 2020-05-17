@@ -161,6 +161,8 @@ HspSimualtorImpl::Run (void)
         m_start = true;
         while(! m_stop){
             double currTs = HspMpiInterface::GetCurrTs();
+	    if(currTs == m_stop_time)
+	        break;
             // \status 
             // -(s+1) 正在执行时间片s
             //   s+1  s时间片执行完毕
@@ -174,9 +176,9 @@ HspSimualtorImpl::Run (void)
             if(doneCnt == m_systemCount-1)
             {
                 double nextTs = HspMpiInterface::GetMinNextTs();
-                // double currTs = HspMpiInterface::GetCurrTs();
+                double currTs = HspMpiInterface::GetCurrTs();
                 // cout << "process id ="<<m_myId<<",可以继续了, nextTs="<<nextTs << ", currTs="<<currTs<<endl;
-                if( nextTs == -1)  // 所有进程的下一个时间片都是-1, 可以停止了
+                if( nextTs == -1 || (currTs == nextTs) )  // 所有进程的下一个时间片都是-1, 可以停止了
                     m_stop = true;
                 HspMpiInterface::SetCurrTs(nextTs);
             }
@@ -191,23 +193,27 @@ HspSimualtorImpl::Run (void)
         // while(debugFlag);
         m_stop = false;
         m_start = true;
+	int runCount = 0;
         while(! m_stop){
             HspMpiInterface::ReceiveMessages (false);
             double currTs = HspMpiInterface::GetCurrTs();
             double nextEventTs = NextTs(m_currentTslice);
             // 接收消息之后，可能会插入新的时间片，这个时候要更新 nextTs 防止陷入死循环
             HspMpiInterface::SetNextTs(m_myId, nextEventTs);
-            // if(m_myId == 2){
-            //   cout << "process id ="<<m_myId<<", 得到currTs = " << currTs << endl;
-            //   cout << "process id ="<<m_myId<<", 下一个eventTs = " << nextEventTs << endl;
-            // }
+            //if(m_myId == 2){
+            //  cout << "process id ="<<m_myId<<", 得到currTs = " << currTs << endl;
+            //  cout << "process id ="<<m_myId<<", 下一个eventTs = " << nextEventTs << endl;
+            //}
             if( currTs == -1)
                 m_stop = true;
             else if( nextEventTs == currTs ){                     // 符合时间片
-                // cout<< "process id ="<<m_myId<<", OK, 执行" << currTs << endl;
+                //cout<< "process id ="<<m_myId<<", OK, 执行" << currTs << endl;
                 m_currentTslice = nextEventTs;
                 HspMpiInterface::SetStatus(m_myId, -(currTs+1));  //修改为正在执行状态
                 ProcessNextTs();
+                runCount++;
+		if(runCount % 10000 == 0)
+	            m_events.gc();
                 double tempNextTs = NextTs(m_currentTslice);
                 // if(m_myId == 2)
                 //     cout<< "process id ="<<m_myId<<", OK, set nextTs=" << tempNextTs << endl;
@@ -238,7 +244,6 @@ void
 HspSimualtorImpl::Stop (void)
 {
   NS_LOG_FUNCTION (this);
-
   m_stop = true;
 }
 
@@ -246,7 +251,11 @@ void
 HspSimualtorImpl::Stop (Time const &delay)
 {
   NS_LOG_FUNCTION (this << delay.GetTimeStep ());
-
+  if(m_myId == 0)
+  {
+          double currTs = HspMpiInterface::GetCurrTs();
+	  m_stop_time = m_events.calcSlice(delay) + currTs;
+  }
   Simulator::Schedule (delay, &Simulator::Stop);
 }
 

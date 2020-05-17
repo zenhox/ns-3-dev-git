@@ -78,6 +78,7 @@ private:
 
   bool m_start;
   bool m_stop;
+  double m_stop_time;
  
   LockFreeScheduler m_events;
 

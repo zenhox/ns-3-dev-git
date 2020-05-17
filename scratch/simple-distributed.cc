@@ -66,7 +66,7 @@ main (int argc, char *argv[])
 #ifdef NS3_MPI
 
   bool nix = true;
-  bool nullmsg = false;
+  bool nullmsg = true;
   bool tracing = false;
 
   // Parse command line
@@ -91,7 +91,7 @@ main (int argc, char *argv[])
   // Enable parallel simulator with the command line arguments
   MpiInterface::Enable (&argc, &argv);
 
-  LogComponentEnable ("PacketSink", LOG_LEVEL_INFO);
+  //LogComponentEnable ("PacketSink", LOG_LEVEL_INFO);
 
   uint32_t systemId = MpiInterface::GetSystemId ();
   uint32_t systemCount = MpiInterface::GetSize ();
@@ -114,7 +114,7 @@ main (int argc, char *argv[])
   // Some default values
   Config::SetDefault ("ns3::OnOffApplication::PacketSize", UintegerValue (512));
   Config::SetDefault ("ns3::OnOffApplication::DataRate", StringValue ("1Mbps"));
-  Config::SetDefault ("ns3::OnOffApplication::MaxBytes", UintegerValue (512));
+  Config::SetDefault ("ns3::OnOffApplication::MaxBytes", UintegerValue (51200000));
 
   // Create leaf nodes on left with system id 0
   NodeContainer leftLeafNodes;
@@ -239,7 +239,7 @@ main (int argc, char *argv[])
     }
 
   // Create a packet sink on the right leafs to receive packets from left leafs
-  uint16_t port = 50000;\
+  uint16_t port = 50000;
   uint32_t judSid1 = 1;
   uint32_t judSid2 = 2;
   if(nullmsg){

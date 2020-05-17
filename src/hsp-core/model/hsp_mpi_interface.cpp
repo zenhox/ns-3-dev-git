@@ -370,15 +370,16 @@ HspMpiInterface::GetMinNextTs()
   NS_ASSERT( m_glbctl_ptr != nullptr);
   HspCtlWin* _ptr= (HspCtlWin*) m_glbctl_ptr;
   double min = -1;
+  bool stop = true;
   for(unsigned i = 1; i < m_size; ++i){
     double ts = (_ptr->nextSt)[i].load();  
-    // if(count!=0){
-    //   count--;
-    // std::cout << ts << " ";
-    // } 
     if( ts != -1 && (min == -1 || ts < min) )
         min = ts;
+    if( ts != -1) 
+	stop = false;
   }
+  if(stop) 
+      return -1;
   // std::cout << std::endl;
   return min;
 }
