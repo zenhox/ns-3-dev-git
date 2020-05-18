@@ -50,7 +50,7 @@ public:
   inline int PeekNext (shared_ptr<EventsMap>&);
   
   // 没有开始输入-1
-  inline double ReadNext(double currTs);  // 读取下一个时间片
+  inline int64_t ReadNext(int64_t currTs);  // 读取下一个时间片
 
   // Inherited
   inline int Insert (const Scheduler::Event &ev);
@@ -59,20 +59,20 @@ public:
   inline bool IsEmpty (void);
 
   uint64_t getEventCount()const {return _eventCnt.load();}
-  double getCurrentSliceId()const{return _curSliceId;}
-  inline double calcSlice(const Time& time)const;
+  int64_t getCurrentSliceId()const{return _curSliceId;}
+  inline int64_t calcSlice(const Time& time)const;
   
   void gc();
 private:
   Time                     _sliceSize;
   std::atomic<uint64_t>    _eventCnt;
-  double                   _curSliceId;
-  sl_map_gc<double,  shared_ptr<EventsMap> > _events;
+  int64_t                   _curSliceId;
+  sl_map_gc<int64_t,  shared_ptr<EventsMap> > _events;
 };
 
-inline double LockFreeScheduler::calcSlice(const Time& time)const
+inline int64_t LockFreeScheduler::calcSlice(const Time& time)const
 {
-    return (time / _sliceSize).GetDouble();
+    return (int64_t)(time / _sliceSize).GetDouble();
 }
 
 inline int LockFreeScheduler::PeekNext(shared_ptr<EventsMap> &events){
@@ -107,7 +107,7 @@ inline int LockFreeScheduler::PeekNext(shared_ptr<EventsMap> &events){
 }
 
 
-inline double LockFreeScheduler::ReadNext(double currTs){
+inline int64_t LockFreeScheduler::ReadNext(int64_t currTs){
     if( currTs == -1){
       // 还没有开始, 返回第一个
       auto itr = _events.begin();
@@ -127,7 +127,7 @@ inline double LockFreeScheduler::ReadNext(double currTs){
 
 inline int LockFreeScheduler::Insert (const Scheduler::Event &ev){
   Time evTime = Time(ev.key.m_ts);  
-  double slice_id = calcSlice(evTime);
+  int64_t slice_id = calcSlice(evTime);
   shared_ptr<EventsMap> events = std::make_shared <EventsMap>();
   auto re = _events.insert(std::make_pair(slice_id,events)); 
   if(slice_id < _curSliceId)
@@ -143,7 +143,7 @@ inline int LockFreeScheduler::Insert (const Scheduler::Event &ev){
 inline void LockFreeScheduler::Remove (const Scheduler::Event &ev)
 {
   Time evTime = Time(ev.key.m_ts); 
-  double slice_id = calcSlice(evTime);
+  int64_t slice_id = calcSlice(evTime);
   auto itr = _events.find(slice_id);
   if(itr.isNull())
       return;

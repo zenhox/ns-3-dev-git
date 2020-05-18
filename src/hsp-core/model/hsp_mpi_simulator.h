@@ -69,7 +69,7 @@ public:
 private:
   virtual void DoDispose (void);
 
-  double NextTs (double) ;
+  int64_t NextTs (int64_t) ;
   void ProcessNextTs(void);
 
   typedef std::list<EventId> DestroyEvents;
@@ -78,7 +78,7 @@ private:
 
   bool m_start;
   bool m_stop;
-  double m_stop_time;
+  int64_t m_stop_time;
  
   LockFreeScheduler m_events;
 
@@ -86,7 +86,7 @@ private:
   uint32_t m_sub_uid;
   uint32_t m_currentUid;
   uint64_t m_currentTs;
-  double   m_currentTslice;
+  int64_t   m_currentTslice;
   uint32_t m_currentContext;
   /** The event count. */
   uint64_t m_eventCount;

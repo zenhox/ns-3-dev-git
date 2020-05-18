@@ -352,7 +352,7 @@ HspMpiInterface::Disable ()
 }
 
 
-double 
+int64_t 
 HspMpiInterface::GetCurrTs()
 {
   NS_LOG_FUNCTION_NOARGS ();
@@ -362,17 +362,17 @@ HspMpiInterface::GetCurrTs()
   return (_ptr->currSlice).load();
 }
 
-double 
+int64_t 
 HspMpiInterface::GetMinNextTs()
 {
   NS_LOG_FUNCTION_NOARGS ();
   // static int count = 10;
   NS_ASSERT( m_glbctl_ptr != nullptr);
   HspCtlWin* _ptr= (HspCtlWin*) m_glbctl_ptr;
-  double min = -1;
+  int64_t min = -1;
   bool stop = true;
   for(unsigned i = 1; i < m_size; ++i){
-    double ts = (_ptr->nextSt)[i].load();  
+    int64_t ts = (_ptr->nextSt)[i].load();  
     if( ts != -1 && (min == -1 || ts < min) )
         min = ts;
     if( ts != -1) 
@@ -386,7 +386,7 @@ HspMpiInterface::GetMinNextTs()
 
 
 void 
-HspMpiInterface::SetCurrTs(double ts)
+HspMpiInterface::SetCurrTs(int64_t ts)
 {
   NS_LOG_FUNCTION_NOARGS ();
 
@@ -397,7 +397,7 @@ HspMpiInterface::SetCurrTs(double ts)
 
 
 void 
-HspMpiInterface::SetNextTs(unsigned sid, double ts)
+HspMpiInterface::SetNextTs(unsigned sid, int64_t ts)
 {
   NS_LOG_FUNCTION_NOARGS ();
 
@@ -412,7 +412,7 @@ HspMpiInterface::SetNextTs(unsigned sid, double ts)
 
 
 void 
-HspMpiInterface::SetStatus(unsigned sid, double status)
+HspMpiInterface::SetStatus(unsigned sid, int64_t status)
 {
   NS_LOG_FUNCTION_NOARGS ();
 
@@ -422,7 +422,7 @@ HspMpiInterface::SetStatus(unsigned sid, double status)
   (_ptr->states)[sid].store(status); 
 }
 
-double  
+int64_t  
 HspMpiInterface::GetStatus(unsigned sid)
 {
   NS_LOG_FUNCTION_NOARGS ();

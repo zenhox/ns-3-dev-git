@@ -66,7 +66,7 @@ main (int argc, char *argv[])
 #ifdef NS3_MPI
 
   bool nix = true;
-  bool nullmsg = true;
+  bool nullmsg = false;
   bool tracing = false;
 
   // Parse command line
@@ -91,7 +91,7 @@ main (int argc, char *argv[])
   // Enable parallel simulator with the command line arguments
   MpiInterface::Enable (&argc, &argv);
 
-  //LogComponentEnable ("PacketSink", LOG_LEVEL_INFO);
+  LogComponentEnable ("PacketSink", LOG_LEVEL_INFO);
 
   uint32_t systemId = MpiInterface::GetSystemId ();
   uint32_t systemCount = MpiInterface::GetSize ();

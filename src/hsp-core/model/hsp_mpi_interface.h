@@ -61,9 +61,9 @@ private:
 class Packet;
 
 struct HspCtlWin{
-    std::atomic<double> states[SYSTEM_SIZE];
-    std::atomic<double> nextSt[SYSTEM_SIZE];
-    std::atomic<double> currSlice;
+    std::atomic<int64_t> states[SYSTEM_SIZE];
+    std::atomic<int64_t> nextSt[SYSTEM_SIZE];
+    std::atomic<int64_t> currSlice;
 };
 
 /**
@@ -138,18 +138,18 @@ public:
   /**
    * \return global shared data of ts.
    */
-  static double GetCurrTs();
-  static double GetMinNextTs();
+  static int64_t GetCurrTs();
+  static int64_t GetMinNextTs();
   /**
    * set global shared data of ts.
    */
-  static void SetCurrTs(double ts);
-  static void SetNextTs(unsigned sid, double ts);
+  static void SetCurrTs(int64_t ts);
+  static void SetNextTs(unsigned sid, int64_t ts);
   /**
    * set/get global shared data of state
    */
-  static void SetStatus(unsigned sid, double status);
-  static double  GetStatus(unsigned sid);
+  static void SetStatus(unsigned sid, int64_t status);
+  static int64_t  GetStatus(unsigned sid);
    
 
 private:
