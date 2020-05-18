@@ -47,6 +47,38 @@ NS_LOG_COMPONENT_DEFINE ("HspSimualtorImpl");
 
 NS_OBJECT_ENSURE_REGISTERED (HspSimualtorImpl);
 
+std::atomic<bool> HspSimualtorImpl::m_globalFinished(false);
+std::atomic<bool> HspSimualtorImpl::m_globalStart(false);
+std::atomic<uint64_t> HspSimualtorImpl::m_globalSliceCnt(0);
+
+void 
+HspSimualtorImpl::message_work()
+{
+     while( ! m_globalStart.load()  );
+     //cout << "Start receive message..." << endl;
+     while( ! m_globalFinished.load() )
+     {
+         HspMpiInterface::ReceiveMessages (false);
+     }
+}
+void 
+HspSimualtorImpl::gc_work(LockFreeScheduler* data, int count)
+{
+    while( ! m_globalStart.load()  );
+    //cout << "Start gc..." << endl;
+    while( ! m_globalFinished.load() )
+    {
+	uint64_t cnt = m_globalSliceCnt.load();
+	if(cnt % count == 0)
+	{
+            //cout << "Gc once..." << endl;
+            data->gc(count);
+	}
+
+    }
+}
+
+
 
 TypeId
 HspSimualtorImpl::GetTypeId (void)
@@ -72,7 +104,9 @@ HspSimualtorImpl::HspSimualtorImpl ()
   NS_FATAL_ERROR ("Can't use distributed simulator without MPI compiled in");
 #endif
 
+  m_start = false;
   m_stop = false;
+
   // uids are allocated from 4.
   // uid 0 is "invalid" events
   // uid 1 is "now" events
@@ -85,7 +119,6 @@ HspSimualtorImpl::HspSimualtorImpl ()
   m_currentTslice = -1;
   m_currentContext = Simulator::NO_CONTEXT;
   m_eventCount = 0;
-  m_globalFinished = false;
 }
 
 HspSimualtorImpl::~HspSimualtorImpl ()
@@ -139,7 +172,7 @@ HspSimualtorImpl::SetScheduler (ObjectFactory schedulerFactory)
 bool
 HspSimualtorImpl::IsFinished (void) const
 {
-  return m_globalFinished;
+  return m_globalFinished.load();
 }
 
 
@@ -158,13 +191,14 @@ HspSimualtorImpl::Run (void)
 
 #ifdef NS3_MPI
     if(m_myId == 0){
-        cout << "Master 启动!" << endl;
+        //cout << "Master 启动!" << endl;
         m_stop = false;
         m_start = true;
-        while(! m_stop){
+        m_globalStart.store(true);
+        while(! m_stop ){
             int64_t currTs = HspMpiInterface::GetCurrTs();
-            if(currTs == m_stop_time)
-                break;
+            //if(currTs == m_stop_time)
+            //    break;
             // \status 
             // -(s+1) 正在执行时间片s
             //   s+1  s时间片执行完毕
@@ -180,45 +214,35 @@ HspSimualtorImpl::Run (void)
                 int64_t nextTs = HspMpiInterface::GetMinNextTs();
                 int64_t currTs = HspMpiInterface::GetCurrTs();
                 // cout << "process id ="<<m_myId<<",可以继续了, nextTs="<<nextTs << ", currTs="<<currTs<<endl;
-                if( nextTs == -1 || (currTs == nextTs) )  // 所有进程的下一个时间片都是-1, 可以停止了
+                if( nextTs == -1 || (currTs == nextTs) || (currTs == m_stop_time))  // 所有进程的下一个时间片都是-1, 可以停止了
                     m_stop = true;
                 HspMpiInterface::SetCurrTs(nextTs);
             }
         }
-        cout << "Master: Global finished!"<<endl;
+        //cout << "Master: Global finished!"<<endl;
         HspMpiInterface::SetCurrTs(-1);
-        m_globalFinished = true;
+        m_globalFinished.store(true);
     }
     else{
-        cout << "Slave:"<<m_myId<<" 启动!" << endl;
-        // int debugFlag =1 ;
-        // while(debugFlag);
+        //cout << "Slave:"<<m_myId<<" 启动!" << endl;
         m_stop = false;
         m_start = true;
-	      int runCount = 0;
-        while(! m_stop){
-            HspMpiInterface::ReceiveMessages (false);
+	std::thread message_thread(message_work);
+	std::thread gc_thread(gc_work, &m_events, 3000);
+        m_globalStart.store(true);
+        while(! m_stop ){
+            HspMpiInterface::TestSendComplete ();
             int64_t currTs = HspMpiInterface::GetCurrTs();
             int64_t nextEventTs = NextTs(m_currentTslice);
-            // 接收消息之后，可能会插入新的时间片，这个时候要更新 nextTs 防止陷入死循环
             HspMpiInterface::SetNextTs(m_myId, nextEventTs);
-            //if(m_myId == 2){
-            //  cout << "process id ="<<m_myId<<", 得到currTs = " << currTs << endl;
-            //  cout << "process id ="<<m_myId<<", 下一个eventTs = " << nextEventTs << endl;
-            //}
             if( currTs == -1)
                 m_stop = true;
             else if( nextEventTs == currTs ){                     // 符合时间片
-                //cout<< "process id ="<<m_myId<<", OK, 执行" << currTs << endl;
+                m_globalSliceCnt++;
                 m_currentTslice = nextEventTs;
                 HspMpiInterface::SetStatus(m_myId, -(currTs+1));  //修改为正在执行状态
                 ProcessNextTs();
-                runCount++;
-		            if(runCount % 10000 == 0)
-	                  m_events.gc();
                 int64_t tempNextTs = NextTs(m_currentTslice);
-                // if(m_myId == 2)
-                //     cout<< "process id ="<<m_myId<<", OK, set nextTs=" << tempNextTs << endl;
                 HspMpiInterface::SetNextTs(m_myId, tempNextTs);
                 HspMpiInterface::SetStatus(m_myId, currTs+1);     // 修改为执行完毕
             }
@@ -228,9 +252,10 @@ HspSimualtorImpl::Run (void)
               // 2 master还没有更新新的时间片
               HspMpiInterface::SetStatus(m_myId, currTs+1);    
             }
-            HspMpiInterface::TestSendComplete ();
         }
-        m_globalFinished = true;
+        m_globalFinished.store(true);
+	message_thread.join();
+	gc_thread.join();
     }
 #else
   NS_FATAL_ERROR ("Can't use distributed simulator without MPI compiled in");

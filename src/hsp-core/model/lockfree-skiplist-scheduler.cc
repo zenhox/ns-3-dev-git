@@ -21,8 +21,9 @@ bool LockFreeScheduler::IsEmpty (void){
     return itr.isNull();
 }
 
-void LockFreeScheduler::gc(){
-    int count = 9988;
+void LockFreeScheduler::gc(int count){
+    count--;
+    count--;
     auto itr = _events.begin();
     while(count--)
         itr = _events.erase(itr);

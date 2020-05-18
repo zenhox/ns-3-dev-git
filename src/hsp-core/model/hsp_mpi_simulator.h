@@ -66,6 +66,9 @@ public:
   virtual uint32_t GetContext (void) const;
   virtual uint64_t GetEventCount (void) const;
 
+  static void message_work();
+  static void gc_work(LockFreeScheduler* data, int count);
+
 private:
   virtual void DoDispose (void);
 
@@ -93,7 +96,10 @@ private:
 
   uint32_t     m_myId;        // MPI Rank
   uint32_t     m_systemCount; // MPI Size
-  bool         m_globalFinished;
+
+  static std::atomic<bool> m_globalStart;
+  static std::atomic<bool> m_globalFinished;
+  static std::atomic<uint64_t> m_globalSliceCnt;
 };
 
 } // namespace ns3

@@ -56,6 +56,10 @@
 #include <mpi.h>
 #endif
 
+#include <chrono> 
+using namespace std;
+using namespace chrono;
+
 using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("SimpleDistributed");
@@ -68,12 +72,14 @@ main (int argc, char *argv[])
   bool nix = true;
   bool nullmsg = false;
   bool tracing = false;
+  bool logging = false;
 
   // Parse command line
   CommandLine cmd;
   cmd.AddValue ("nix", "Enable the use of nix-vector or global routing", nix);
   cmd.AddValue ("nullmsg", "Enable the use of null-message synchronization", nullmsg);
   cmd.AddValue ("tracing", "Enable pcap tracing", tracing);
+  cmd.AddValue ("logging", "Enable logging", logging);
   cmd.Parse (argc, argv);
 
   // Distributed simulation setup; by default use granted time window algorithm.
@@ -91,7 +97,10 @@ main (int argc, char *argv[])
   // Enable parallel simulator with the command line arguments
   MpiInterface::Enable (&argc, &argv);
 
-  LogComponentEnable ("PacketSink", LOG_LEVEL_INFO);
+  if(logging)
+  {
+      LogComponentEnable ("PacketSink", LOG_LEVEL_INFO);
+  }
 
   uint32_t systemId = MpiInterface::GetSystemId ();
   uint32_t systemCount = MpiInterface::GetSize ();
@@ -283,8 +292,18 @@ main (int argc, char *argv[])
       clientApps.Stop (Seconds (5));
     }
 
+
   Simulator::Stop (Seconds (5));
+
+  auto start = system_clock::now();
   Simulator::Run ();
+  auto end   = system_clock::now();
+  auto duration = duration_cast<microseconds>(end - start);
+  if(systemId == 0)
+  {
+     cout<<"Done. Cost real time: " << double(duration.count()) * microseconds::period::num / microseconds::period::den  << " seconds."<<endl;
+     //cout<<"Total event : "<< ns3::Simulator::GetEventCount() <<endl;
+  }
   Simulator::Destroy ();
   // Exit the MPI execution environment
   MpiInterface::Disable ();

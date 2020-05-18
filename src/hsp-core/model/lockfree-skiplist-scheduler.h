@@ -62,7 +62,7 @@ public:
   int64_t getCurrentSliceId()const{return _curSliceId;}
   inline int64_t calcSlice(const Time& time)const;
   
-  void gc();
+  void gc(int count);
 private:
   Time                     _sliceSize;
   std::atomic<uint64_t>    _eventCnt;
