@@ -66,6 +66,7 @@ MPI_Request*             HspMpiInterface::m_requests;
 char**                   HspMpiInterface::m_pRxBuffers;
 
 void*                    HspMpiInterface::m_glbctl_ptr = nullptr;
+MPI_Comm                 HspMpiInterface::m_nodecomm; 
 MPI_Win                  HspMpiInterface::m_win;
 MPI_Aint                 HspMpiInterface::m_winSize = sizeof(HspCtlWin);
 #endif
@@ -150,9 +151,9 @@ HspMpiInterface::Enable (int* pargc, char*** pargv)
 #ifdef NS3_MPI
   // Initialize the MPI interface
   MPI_Init (pargc, pargv);
-  MPI_Barrier (MPI_COMM_WORLD);
-  MPI_Comm_rank (MPI_COMM_WORLD, reinterpret_cast <int *> (&m_sid));
-  MPI_Comm_size (MPI_COMM_WORLD, reinterpret_cast <int *> (&m_size));
+  MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &m_nodecomm);    
+  MPI_Comm_rank (m_nodecomm, reinterpret_cast <int *> (&m_sid));
+  MPI_Comm_size (m_nodecomm, reinterpret_cast <int *> (&m_size));
   m_enabled = true;
   m_initialized = true;
   // Post a non-blocking receive for all peers
@@ -162,12 +163,13 @@ HspMpiInterface::Enable (int* pargc, char*** pargv)
     {
       m_pRxBuffers[i] = new char[MAX_MPI_MSG_SIZE2];
       MPI_Irecv (m_pRxBuffers[i], MAX_MPI_MSG_SIZE2, MPI_CHAR, MPI_ANY_SOURCE, 0,
-                 MPI_COMM_WORLD, &m_requests[i]);
+                 m_nodecomm, &m_requests[i]);
     }
+  MPI_Barrier (m_nodecomm);
   // Alloc shared memory
   if(m_sid == 0)
     {
-        MPI_Win_allocate_shared(1, sizeof(HspCtlWin), MPI_INFO_NULL, MPI_COMM_WORLD, &m_glbctl_ptr, &m_win);
+        MPI_Win_allocate_shared(1, sizeof(HspCtlWin), MPI_INFO_NULL, m_nodecomm, &m_glbctl_ptr, &m_win);
         /** Init the global data.*/
         HspCtlWin* _ptr= (HspCtlWin*) m_glbctl_ptr;
         (_ptr->currSlice).store(0);
@@ -181,10 +183,10 @@ HspMpiInterface::Enable (int* pargc, char*** pargv)
     }
     else{
         int disp_unit; //有几个单元
-        MPI_Win_allocate_shared(0, sizeof(HspCtlWin), MPI_INFO_NULL, MPI_COMM_WORLD, &m_glbctl_ptr, &m_win);
+        MPI_Win_allocate_shared(0, sizeof(HspCtlWin), MPI_INFO_NULL, m_nodecomm, &m_glbctl_ptr, &m_win);
         MPI_Win_shared_query(m_win, 0, &m_winSize, &disp_unit, &m_glbctl_ptr);
     }
-    MPI_Barrier (MPI_COMM_WORLD);
+    MPI_Barrier (m_nodecomm);
 #else
   NS_FATAL_ERROR ("Can't use distributed simulator without MPI compiled in");
 #endif
@@ -218,7 +220,7 @@ HspMpiInterface::SendPacket (Ptr<Packet> p, const Time& rxTime, uint32_t node, u
   uint32_t nodeSysId = destNode->GetSystemId ();
 
   MPI_Isend (reinterpret_cast<void *> (i->GetBuffer ()), serializedSize + 16, MPI_CHAR, nodeSysId,
-             0, MPI_COMM_WORLD, (i->GetRequest ()));
+             0, m_nodecomm, (i->GetRequest ()));
   m_txCount++;
 #else
   NS_FATAL_ERROR ("Can't use distributed simulator without MPI compiled in");
@@ -295,7 +297,7 @@ HspMpiInterface::ReceiveMessages (bool blocking)
 
       // Re-queue the next read
       MPI_Irecv (m_pRxBuffers[index], MAX_MPI_MSG_SIZE2, MPI_CHAR, MPI_ANY_SOURCE, 0,
-                 MPI_COMM_WORLD, &m_requests[index]);
+                 m_nodecomm, &m_requests[index]);
     }
 #else
   NS_FATAL_ERROR ("Can't use distributed simulator without MPI compiled in");
@@ -363,6 +365,17 @@ HspMpiInterface::GetCurrTs()
 }
 
 int64_t 
+HspMpiInterface::GetNextTs(unsigned sid)
+{
+  NS_LOG_FUNCTION_NOARGS ();
+  // static int count = 10;
+  NS_ASSERT( m_glbctl_ptr != nullptr);
+  HspCtlWin* _ptr= (HspCtlWin*) m_glbctl_ptr;
+  return (_ptr->nextSt)[sid].load();
+
+}
+
+int64_t 
 HspMpiInterface::GetMinNextTs()
 {
   NS_LOG_FUNCTION_NOARGS ();
@@ -390,6 +403,7 @@ HspMpiInterface::SetCurrTs(int64_t ts)
 {
   NS_LOG_FUNCTION_NOARGS ();
 
+  //std::cout <<m_sid<< ": 设置currTs为" << ts << std::endl;
   NS_ASSERT( m_glbctl_ptr != nullptr);
   HspCtlWin* _ptr= (HspCtlWin*) m_glbctl_ptr;
   (_ptr->currSlice).store(ts);

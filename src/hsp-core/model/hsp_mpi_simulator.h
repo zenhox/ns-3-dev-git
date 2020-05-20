@@ -100,6 +100,7 @@ private:
   static std::atomic<bool> m_globalStart;
   static std::atomic<bool> m_globalFinished;
   static std::atomic<uint64_t> m_globalSliceCnt;
+  static std::atomic<int64_t> m_minDelay;
 };
 
 } // namespace ns3

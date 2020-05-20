@@ -16,7 +16,7 @@
 typedef void* MPI_Request;
 #endif
 
-#define SYSTEM_SIZE 5
+#define SYSTEM_SIZE 50
 
 namespace ns3 {
 
@@ -139,6 +139,7 @@ public:
    * \return global shared data of ts.
    */
   static int64_t GetCurrTs();
+  static int64_t GetNextTs(unsigned sid);
   static int64_t GetMinNextTs();
   /**
    * set global shared data of ts.
@@ -175,6 +176,7 @@ private:
 
   // Pointer to global status data.
   static void* m_glbctl_ptr;
+  static MPI_Comm m_nodecomm; 
   static MPI_Win m_win;
   static MPI_Aint m_winSize;
 };
