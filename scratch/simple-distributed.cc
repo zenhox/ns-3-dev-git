@@ -70,9 +70,9 @@ main (int argc, char *argv[])
 #ifdef NS3_MPI
 
   bool nix = true;
-  bool nullmsg = false;
+  bool nullmsg = true;
   bool tracing = false;
-  bool logging = false;
+  bool logging = true;
 
   // Parse command line
   CommandLine cmd;
