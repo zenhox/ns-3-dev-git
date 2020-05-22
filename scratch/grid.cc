@@ -40,11 +40,11 @@ main (int argc, char *argv[])
 
   //bool nix = true;
 
-  bool logging = false;
+  bool logging = true;
 
   int  mode = 1;  /**1 : normal, 2 : nullmessage 3 : hsp*/
   GridArgs args;
-  args.xSize = 1;
+  args.xSize = 3;
   args.ySize = 50;
   args.startTimeBase = 1;
   args.endTimeBase = 3;
@@ -63,8 +63,8 @@ main (int argc, char *argv[])
   }
 
   Config::SetDefault ("ns3::OnOffApplication::PacketSize", UintegerValue (512));
-  Config::SetDefault ("ns3::OnOffApplication::DataRate", StringValue ("2Mbps"));
-  Config::SetDefault ("ns3::OnOffApplication::MaxBytes", UintegerValue (999999999));
+  Config::SetDefault ("ns3::OnOffApplication::DataRate", StringValue ("20Mbps"));
+  Config::SetDefault ("ns3::OnOffApplication::MaxBytes", UintegerValue (4096));
 
   if(mode == 1)
   {
@@ -148,8 +148,8 @@ void mode3func(GridArgs args)
   stack.InstallAll ();
 
   PointToPointHelper link;
-  link.SetDeviceAttribute ("DataRate", StringValue ("100Mbps"));
-  link.SetChannelAttribute ("Delay", StringValue ("5ms"));
+  link.SetDeviceAttribute ("DataRate", StringValue ("40Gbps"));
+  link.SetChannelAttribute ("Delay", StringValue ("1ms"));
   unsigned pos = 0;
   // xsize == 1
   // ysize == 2
@@ -202,7 +202,7 @@ void mode3func(GridArgs args)
           }
   }
   sinkApp.Start (Seconds (args.startTimeBase));
-  sinkApp.Stop (Seconds (args.endTimeBase + 2));
+  sinkApp.Stop (Seconds (args.endTimeBase));
   
   
   //所有这个sid 的安装到其他所有节点的客户端
@@ -270,14 +270,14 @@ void mode3func(GridArgs args)
           }
   }
   //cout << "flag " << systemId << endl;
-  Ptr<UniformRandomVariable> x = CreateObject<UniformRandomVariable> ();
-  x->SetAttribute ("Min", DoubleValue (0));
-  x->SetAttribute ("Max", DoubleValue (0.001));
-  double rn = x->GetValue ();
-  clientApps.Start (Seconds (args.startTimeBase + rn));
+  //Ptr<UniformRandomVariable> x = CreateObject<UniformRandomVariable> ();
+  //x->SetAttribute ("Min", DoubleValue (0));
+  //x->SetAttribute ("Max", DoubleValue (0.001));
+  //double rn = x->GetValue ();
+  clientApps.Start (Seconds (args.startTimeBase));
   clientApps.Stop (Seconds (args.endTimeBase));
 
-  Simulator::Stop (Seconds (args.endTimeBase + 2.));
+  Simulator::Stop (Seconds (args.endTimeBase));
   
   auto start = system_clock::now();
   //cout << "开始了吗?"  << systemId << endl;
@@ -320,8 +320,8 @@ void mode1func(GridArgs args)
   stack.InstallAll ();
 
   PointToPointHelper link;
-  link.SetDeviceAttribute ("DataRate", StringValue ("100Mbps"));
-  link.SetChannelAttribute ("Delay", StringValue ("5ms"));
+  link.SetDeviceAttribute ("DataRate", StringValue ("40Gbps"));
+  link.SetChannelAttribute ("Delay", StringValue ("1ms"));
   unsigned pos = 0;
   for(unsigned i = 0; i < args.xSize; ++i)
   {
@@ -433,11 +433,11 @@ void mode1func(GridArgs args)
                }
            }
   }
-  Ptr<UniformRandomVariable> x = CreateObject<UniformRandomVariable> ();
-  x->SetAttribute ("Min", DoubleValue (0));
-  x->SetAttribute ("Max", DoubleValue (0.001));
-  double rn = x->GetValue ();
-  clientApps.Start (Seconds (args.startTimeBase + rn));
+  //Ptr<UniformRandomVariable> x = CreateObject<UniformRandomVariable> ();
+  //x->SetAttribute ("Min", DoubleValue (0));
+  //x->SetAttribute ("Max", DoubleValue (0.001));
+  //double rn = x->GetValue ();
+  clientApps.Start (Seconds (args.startTimeBase));
   clientApps.Stop (Seconds (args.endTimeBase));
 
   Simulator::Stop (Seconds (args.endTimeBase));
@@ -483,8 +483,8 @@ void mode2func(GridArgs args)
   stack.InstallAll ();
 
   PointToPointHelper link;
-  link.SetDeviceAttribute ("DataRate", StringValue ("100Mbps"));
-  link.SetChannelAttribute ("Delay", StringValue ("5ms"));
+  link.SetDeviceAttribute ("DataRate", StringValue ("40Gbps"));
+  link.SetChannelAttribute ("Delay", StringValue ("1ms"));
   unsigned pos = 0;
   // xsize == 1
   // ysize == 2
@@ -537,7 +537,7 @@ void mode2func(GridArgs args)
           }
   }
   sinkApp.Start (Seconds (args.startTimeBase));
-  sinkApp.Stop (Seconds (args.endTimeBase + 2));
+  sinkApp.Stop (Seconds (args.endTimeBase));
   
   
   //所有这个sid 的安装到其他所有节点的客户端
@@ -604,20 +604,18 @@ void mode2func(GridArgs args)
               }
           }
   }
-  //cout << "flag " << systemId << endl;
-  Ptr<UniformRandomVariable> x = CreateObject<UniformRandomVariable> ();
-  x->SetAttribute ("Min", DoubleValue (0));
-  x->SetAttribute ("Max", DoubleValue (0.001));
-  double rn = x->GetValue ();
-  clientApps.Start (Seconds (args.startTimeBase + rn));
+  ////cout << "flag " << systemId << endl;
+  //Ptr<UniformRandomVariable> x = CreateObject<UniformRandomVariable> ();
+  //x->SetAttribute ("Min", DoubleValue (0));
+  //x->SetAttribute ("Max", DoubleValue (0.001));
+  //double rn = x->GetValue ();
+  clientApps.Start (Seconds (args.startTimeBase));
   clientApps.Stop (Seconds (args.endTimeBase));
 
-  Simulator::Stop (Seconds (args.endTimeBase + 2.));
+  Simulator::Stop (Seconds (args.endTimeBase));
   
   auto start = system_clock::now();
-  //cout << "开始了吗?"  << systemId << endl;
   Simulator::Run ();
-  //cout << "结束了吗?" << systemId <<endl;
   auto end   = system_clock::now();
   auto duration = duration_cast<microseconds>(end - start);
   if(systemId == 0)

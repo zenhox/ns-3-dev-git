@@ -330,6 +330,15 @@ HspSimualtorImpl::Schedule (Time const &delay, EventImpl *event)
   ev.impl = event;
   ev.key.m_ts = static_cast<uint64_t> (tAbsolute.GetTimeStep ());
   ev.key.m_context = GetContext ();
+
+  if(delay.GetTimeStep() > 0)
+  {
+	  if(delay.GetTimeStep() < m_minDelay.load())
+	  {
+		  m_minDelay.store(delay.GetTimeStep());
+	  }
+  }
+
    if(m_start && delay.GetTimeStep() == 0) //当前时间片立即插入
   {
     ev.key.m_uid = m_currentUid;
