@@ -53,6 +53,7 @@ std::atomic<uint64_t> HspSimualtorImpl::m_globalSliceCnt(0);
 std::atomic<int64_t> HspSimualtorImpl::m_minDelay(9999999999);
 
 
+
 void 
 HspSimualtorImpl::message_work()
 {
@@ -189,6 +190,7 @@ HspSimualtorImpl::IsFinished (void) const
 }
 
 
+// 下一个时间片
 int64_t
 HspSimualtorImpl::NextTs (int64_t currTs) 
 {
@@ -265,6 +267,7 @@ HspSimualtorImpl::Run (void)
                 m_currentTslice = nextEventTs;
                 HspMpiInterface::SetStatus(m_myId, -(currTs+1));  //修改为正在执行状态
                 ProcessNextTs();
+		HspMpiInterface::WaitSendComplete();                              // 等待事件发送完毕才进入下一个时间片
                 int64_t tempNextTs = NextTs(m_currentTslice);
                 HspMpiInterface::SetNextTs(m_myId, tempNextTs);
                 HspMpiInterface::SetStatus(m_myId, currTs+1);     // 修改为执行完毕
@@ -324,32 +327,33 @@ HspSimualtorImpl::Schedule (Time const &delay, EventImpl *event)
 
   Time tAbsolute = delay + TimeStep (m_currentTs);
 
+  //int64_t sid = m_events.calcSlice(tAbsolute);
+
   NS_ASSERT (tAbsolute.IsPositive ());
   NS_ASSERT (tAbsolute >= TimeStep (m_currentTs));
+
   Scheduler::Event ev;
   ev.impl = event;
   ev.key.m_ts = static_cast<uint64_t> (tAbsolute.GetTimeStep ());
   ev.key.m_context = GetContext ();
 
-  if(delay.GetTimeStep() > 0)
-  {
-	  if(delay.GetTimeStep() < m_minDelay.load())
-	  {
-		  m_minDelay.store(delay.GetTimeStep());
-	  }
-  }
+  // if(m_start && sid == m_currentTslice) //当前时间片内插入
+  //{
+  //      ev.key.m_uid = m_uid;
+  //      ev.key.m_sub_uid = m_sub_uid;
+  //      m_uid++;
+  //      m_sub_uid++;
+  //}
+  //else{
+  //  ev.key.m_uid = m_uid;
+  //  ev.key.m_sub_uid = 0;
+  //  m_uid++;
+  //}
 
-   if(m_start && delay.GetTimeStep() == 0) //当前时间片立即插入
-  {
-    ev.key.m_uid = m_currentUid;
-    ev.key.m_sub_uid = m_sub_uid;
-    m_sub_uid++;
-  }
-  else{
-    ev.key.m_uid = m_uid;
-    ev.key.m_sub_uid = 0;
-    m_uid++;
-  }
+  ev.key.m_uid = m_uid;
+  ev.key.m_sub_uid = 0;
+  m_uid++;
+
   m_events.Insert (ev);
   return EventId (event, ev.key.m_ts, ev.key.m_context, ev.key.m_uid, ev.key.m_sub_uid);
 }
@@ -359,9 +363,10 @@ HspSimualtorImpl::ScheduleWithContext (uint32_t context, Time const &delay, Even
 {
   NS_LOG_FUNCTION (this << context << delay.GetTimeStep () << m_currentTs << event);
   // cout << m_myId << " 调用了ScheduleWithContext, contex= "<< context <<", delay=" << delay.GetTimeStep() << endl;
+  Time tAbsolute = delay + TimeStep (m_currentTs);
   Scheduler::Event ev;
   ev.impl = event;
-  ev.key.m_ts = m_currentTs + delay.GetTimeStep ();
+  ev.key.m_ts = static_cast<uint64_t> (tAbsolute.GetTimeStep ());
   ev.key.m_context = context;
   if(delay.GetTimeStep() > 0)
   {
@@ -370,18 +375,20 @@ HspSimualtorImpl::ScheduleWithContext (uint32_t context, Time const &delay, Even
 		  m_minDelay.store(delay.GetTimeStep());
 	  }
   }
-
-  if(m_start && delay.GetTimeStep() == 0) //当前时间片立即插入
+  if(delay.GetTimeStep() < 0)
   {
-    ev.key.m_uid = m_currentUid;
-    ev.key.m_sub_uid = m_sub_uid;
-    m_sub_uid++;
+	  cout << "#######################################################################出现片前插入" << endl;
+	  cout << "#######################################################################出现片前插入" << endl;
+	  cout << "#######################################################################出现片前插入" << endl;
+	  cout << "#######################################################################出现片前插入" << endl;
+	  cout << "#######################################################################出现片前插入" << endl;
+	  cout << "#######################################################################出现片前插入" << endl;
+	  cout << "#######################################################################出现片前插入" << endl;
+	  exit(-1);
   }
-  else{
-    ev.key.m_uid = m_uid;
-    ev.key.m_sub_uid = 0;
-    m_uid++;
-  }
+  ev.key.m_uid = m_uid;
+  ev.key.m_sub_uid = 0;
+  m_uid++;
   m_events.Insert (ev);
 }
 
@@ -537,6 +544,7 @@ void HspSimualtorImpl::ProcessNextTs(void){
         (it->second)->Invoke();
         (it->second)->Unref ();
         m_eventCount++;
+        HspMpiInterface::ReceiveMessages (false);
     }
 }
 

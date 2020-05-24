@@ -48,6 +48,9 @@ public:
   virtual ~LockFreeScheduler ();
 
   inline int PeekNext (shared_ptr<EventsMap>&);
+
+  void setSliceSize(uint64_t time);
+  Time getSliceSize();
   
   // 没有开始输入-1
   inline int64_t ReadNext(int64_t currTs);  // 读取下一个时间片

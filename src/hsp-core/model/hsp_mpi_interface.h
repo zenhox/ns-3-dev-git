@@ -126,6 +126,7 @@ public:
    * Check for completed sends
    */
   static void TestSendComplete ();
+  static void WaitSendComplete ();
   /**
    * \return received count in packets
    */

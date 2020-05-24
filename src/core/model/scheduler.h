@@ -185,7 +185,7 @@ inline bool operator < (const Scheduler::EventKey &a,
 inline bool operator != (const Scheduler::EventKey &a,
                          const Scheduler::EventKey &b)
 {
-  return a.m_uid != b.m_uid || a.m_sub_uid != b.m_sub_uid;
+  return a.m_ts != b.m_ts || a.m_uid != b.m_uid || a.m_sub_uid != b.m_sub_uid;
 }
 
 /**

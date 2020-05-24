@@ -40,7 +40,7 @@ main (int argc, char *argv[])
 
   //bool nix = true;
 
-  bool logging = true;
+  bool logging = false;
 
   int  mode = 1;  /**1 : normal, 2 : nullmessage 3 : hsp*/
   GridArgs args;
@@ -63,8 +63,8 @@ main (int argc, char *argv[])
   }
 
   Config::SetDefault ("ns3::OnOffApplication::PacketSize", UintegerValue (512));
-  Config::SetDefault ("ns3::OnOffApplication::DataRate", StringValue ("20Mbps"));
-  Config::SetDefault ("ns3::OnOffApplication::MaxBytes", UintegerValue (4096));
+  Config::SetDefault ("ns3::OnOffApplication::DataRate", StringValue ("100Mbps"));
+  Config::SetDefault ("ns3::OnOffApplication::MaxBytes", UintegerValue (40960));
 
   if(mode == 1)
   {
@@ -106,6 +106,21 @@ main (int argc, char *argv[])
           printf("Using hsp time slice core.\n");
       }
       mode3func(args);
+  }
+  else if (mode == 4)
+  {
+      GlobalValue::Bind ("SimulatorImplementationType",
+		StringValue ("ns3::DistributedSimulatorImpl"));
+      // Enable parallel simulator with the command line arguments
+      MpiInterface::Enable (&argc, &argv);
+      uint32_t systemId = MpiInterface::GetSystemId ();
+      uint32_t systemCount = MpiInterface::GetSize ();
+      if(systemId == 0)
+      {
+          printf("Start %u system to accelarate simulation...\n", systemCount);
+          printf("Using distribute core.\n");
+      }
+      mode2func(args);
   }
   return 0;
 #else
@@ -149,7 +164,7 @@ void mode3func(GridArgs args)
 
   PointToPointHelper link;
   link.SetDeviceAttribute ("DataRate", StringValue ("40Gbps"));
-  link.SetChannelAttribute ("Delay", StringValue ("1ms"));
+  link.SetChannelAttribute ("Delay", StringValue ("50ns"));
   unsigned pos = 0;
   // xsize == 1
   // ysize == 2
@@ -321,7 +336,7 @@ void mode1func(GridArgs args)
 
   PointToPointHelper link;
   link.SetDeviceAttribute ("DataRate", StringValue ("40Gbps"));
-  link.SetChannelAttribute ("Delay", StringValue ("1ms"));
+  link.SetChannelAttribute ("Delay", StringValue ("50ns"));
   unsigned pos = 0;
   for(unsigned i = 0; i < args.xSize; ++i)
   {
@@ -484,7 +499,7 @@ void mode2func(GridArgs args)
 
   PointToPointHelper link;
   link.SetDeviceAttribute ("DataRate", StringValue ("40Gbps"));
-  link.SetChannelAttribute ("Delay", StringValue ("1ms"));
+  link.SetChannelAttribute ("Delay", StringValue ("50ns"));
   unsigned pos = 0;
   // xsize == 1
   // ysize == 2

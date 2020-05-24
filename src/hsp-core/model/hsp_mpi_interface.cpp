@@ -330,6 +330,35 @@ HspMpiInterface::TestSendComplete ()
 }
 
 void
+HspMpiInterface::WaitSendComplete ()
+{
+  NS_LOG_FUNCTION_NOARGS ();
+
+#ifdef NS3_MPI
+  std::list<HspSentBuffer>::iterator i = m_pendingTx.begin ();
+  while (i != m_pendingTx.end ())
+    {
+      MPI_Status status;
+      int flag = 0;
+      while( flag == 0)
+      {
+          MPI_Test (i->GetRequest (), &flag, &status);
+          std::list<HspSentBuffer>::iterator current = i; // Save current for erasing
+          if (flag)
+          { // This message is complete
+              // std::cout << "发送成功了呀" << std::endl;
+	      i++;
+              m_pendingTx.erase (current);
+          }
+      }
+      //i++;                                    // Advance to next
+    }
+#else
+  NS_FATAL_ERROR ("Can't use distributed simulator without MPI compiled in");
+#endif
+}
+
+void
 HspMpiInterface::Disable ()
 {
   NS_LOG_FUNCTION_NOARGS ();

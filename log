@@ -1,0 +1,84 @@
+
+csqjxiao@csqjxiao-Precision-7920-Tower:~/hox/ns-3-dev-git$ ./waf --run scratch/grid
+Waf: Entering directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Waf: Leaving directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Build commands will be stored in build/compile_commands4372.json
+'build' finished successfully (0.393s)
+Start one process one thread mode...
+Done. Cost real time: 500.766 seconds.
+csqjxiao@csqjxiao-Precision-7920-Tower:~/hox/ns-3-dev-git$ mpirun  -np 1 ./waf --run "scratch/grid --mode=2" 
+Waf: Entering directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Waf: Leaving directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Build commands will be stored in build/compile_commands3652.json
+'build' finished successfully (0.415s)
+Start 1 system to accelarate simulation...
+Using null message core.
+Done. Cost real time: 564.75 seconds.
+csqjxiao@csqjxiao-Precision-7920-Tower:~/hox/ns-3-dev-git$ mpirun  -np 3 ./waf --run "scratch/grid --mode=2" 
+Waf: Entering directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Waf: Entering directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Waf: Entering directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Waf: Leaving directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Build commands will be stored in build/compile_commands5805.json
+'build' finished successfully (0.413s)
+Waf: Leaving directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Build commands will be stored in build/compile_commands884.json
+'build' finished successfully (0.425s)
+Waf: Leaving directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Build commands will be stored in build/compile_commands8249.json
+'build' finished successfully (0.408s)
+Start 3 system to accelarate simulation...
+Using null message core.
+Done. Cost real time: 714.086 seconds.
+csqjxiao@csqjxiao-Precision-7920-Tower:~/hox/ns-3-dev-git$ mpirun  -np 5 ./waf --run "scratch/grid --mode=2" 
+Waf: Entering directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Waf: Entering directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Waf: Entering directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Waf: Entering directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Waf: Entering directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Waf: Leaving directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Build commands will be stored in build/compile_commands310.json
+'build' finished successfully (0.431s)
+Waf: Leaving directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Build commands will be stored in build/compile_commands1696.json
+'build' finished successfully (0.417s)
+Waf: Leaving directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Build commands will be stored in build/compile_commands6625.json
+'build' finished successfully (0.500s)
+Waf: Leaving directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Build commands will be stored in build/compile_commands2407.json
+'build' finished successfully (0.421s)
+Waf: Leaving directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Build commands will be stored in build/compile_commands5063.json
+'build' finished successfully (0.431s)
+Start 5 system to accelarate simulation...
+Using null message core.
+Done. Cost real time: 1246 seconds.
+csqjxiao@csqjxiao-Precision-7920-Tower:~/hox/ns-3-dev-git$ mpirun  -np 6 ./waf --run "scratch/grid --mode=2" 
+Waf: Entering directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Waf: Entering directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Waf: Entering directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Waf: Entering directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Waf: Entering directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Waf: Entering directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Waf: Leaving directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Build commands will be stored in build/compile_commands6113.json
+'build' finished successfully (0.507s)
+Waf: Leaving directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Build commands will be stored in build/compile_commands5131.json
+'build' finished successfully (0.451s)
+Waf: Leaving directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Build commands will be stored in build/compile_commands4003.json
+'build' finished successfully (0.446s)
+Waf: Leaving directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Waf: Leaving directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Build commands will be stored in build/compile_commands3084.json
+Build commands will be stored in build/compile_commands4322.json
+'build' finished successfully (0.419s)
+'build' finished successfully (0.443s)
+Waf: Leaving directory `/home/csqjxiao/hox/ns-3-dev-git/build'
+Build commands will be stored in build/compile_commands9038.json
+'build' finished successfully (0.452s)
+Start 6 system to accelarate simulation...
+Using null message core.
+
